@@ -70,12 +70,22 @@ jobs:
       - name: Smoke test lewat nginx (frontend -> backend -> MySQL)
         run: |
           set -e
+          API=http://localhost:3000/api
+          JSON='Content-Type: application/json'
           curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
-          curl -fsS http://localhost:3000/api/health
-          curl -fsS -X POST http://localhost:3000/api/todos \
-               -H 'Content-Type: application/json' \
-               -d '{"title":"todo dari CI"}'
-          curl -fsS http://localhost:3000/api/todos | grep -q 'todo dari CI'
+          curl -fsS $API/health
+
+          echo "Tambah todo"
+          ID=$(curl -fsS -X POST $API/todos -H "$JSON" -d '{"title":"todo dari CI"}' | jq -r .id)
+          curl -fsS $API/todos | jq -e "any(.id == $ID)"
+
+          echo "Update 1: tandai selesai, cek filter, hapus yang selesai"
+          curl -fsS -X PUT $API/todos/$ID
+          curl -fsS "$API/todos?status=done" | jq -e "any(.id == $ID)"
+          curl -fsS "$API/todos?status=active" | jq -e "all(.id != $ID)"
+          curl -fsS -X DELETE "$API/todos?status=done" | jq -e '.deleted >= 1'
+          curl -fsS "$API/todos?status=done" | jq -e 'length == 0'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $API/todos)" = 400
           echo "Smoke test lulus"
 
       - name: Tampilkan log kalau gagal
@@ -140,6 +150,51 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # ---------------------------------------------------------------- CD ke laptop (tanpa VPS)
+  deploy-local:
+    name: Deploy ke laptop (self-hosted runner)
+    runs-on: self-hosted
+    needs: build-push
+    # Nyala kalau variable DEPLOY_LOCAL = true
+    if: vars.DEPLOY_LOCAL == 'true'
+    concurrency:
+      group: deploy-local
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: powershell
+    env:
+      IMAGE_PREFIX: docker.io/${{ secrets.DOCKERHUB_USERNAME }}
+      # Password khusus laptop, sama dengan docker-compose.yml development
+      MYSQL_ROOT_PASSWORD: rootpass-dev
+      DB_PASSWORD: todopass-dev
+      APP_PORT: 8080
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tentukan tag image dari commit ini
+        run: Add-Content -Path $env:GITHUB_ENV -Value "IMAGE_TAG=sha-$($env:GITHUB_SHA.Substring(0,7))"
+
+      - name: Pull image dan jalankan container
+        run: |
+          docker compose -p todo-cd -f deploy/docker-compose.prod.yml pull
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          docker compose -p todo-cd -f deploy/docker-compose.prod.yml up -d --remove-orphans
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Cek aplikasi sehat
+        run: |
+          for ($i = 0; $i -lt 24; $i++) {
+            try {
+              Invoke-RestMethod http://localhost:8080/api/health | Out-Null
+              Write-Host "Deploy $env:IMAGE_TAG berhasil"
+              docker compose -p todo-cd -f deploy/docker-compose.prod.yml ps
+              exit 0
+            } catch { Start-Sleep -Seconds 5 }
+          }
+          docker compose -p todo-cd -f deploy/docker-compose.prod.yml logs --tail 50
+          exit 1
 
   # ---------------------------------------------------------------- CD ke VPS
   deploy:
