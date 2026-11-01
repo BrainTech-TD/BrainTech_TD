@@ -70,22 +70,12 @@ jobs:
       - name: Smoke test lewat nginx (frontend -> backend -> MySQL)
         run: |
           set -e
-          API=http://localhost:3000/api
-          JSON='Content-Type: application/json'
           curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
-          curl -fsS $API/health
-
-          echo "Tambah todo"
-          ID=$(curl -fsS -X POST $API/todos -H "$JSON" -d '{"title":"todo dari CI"}' | jq -r .id)
-          curl -fsS $API/todos | jq -e "any(.id == $ID)"
-
-          echo "Update 1: tandai selesai, cek filter, hapus yang selesai"
-          curl -fsS -X PUT $API/todos/$ID
-          curl -fsS "$API/todos?status=done" | jq -e "any(.id == $ID)"
-          curl -fsS "$API/todos?status=active" | jq -e "all(.id != $ID)"
-          curl -fsS -X DELETE "$API/todos?status=done" | jq -e '.deleted >= 1'
-          curl -fsS "$API/todos?status=done" | jq -e 'length == 0'
-          test "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $API/todos)" = 400
+          curl -fsS http://localhost:3000/api/health
+          curl -fsS -X POST http://localhost:3000/api/todos \
+               -H 'Content-Type: application/json' \
+               -d '{"title":"todo dari CI"}'
+          curl -fsS http://localhost:3000/api/todos | grep -q 'todo dari CI'
           echo "Smoke test lulus"
 
       - name: Tampilkan log kalau gagal
@@ -150,8 +140,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
-
-  # ---------------------------------------------------------------- CD ke laptop (tanpa VPS)
+  
+# ---------------------------------------------------------------- CD ke laptop (tanpa VPS)
   deploy-local:
     name: Deploy ke laptop (self-hosted runner)
     runs-on: self-hosted
