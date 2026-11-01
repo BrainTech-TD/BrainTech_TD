@@ -267,5 +267,3 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             if command -v docker >/dev/null 2>&1; then docker image prune -f; else podman image prune -f; fiORT || 22 }}
-          script: |
-            if command -v docker >/dev/null 2>&1; then docker image prune -f; else podman image prune -f; fi
