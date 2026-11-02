@@ -86,6 +86,14 @@ jobs:
           curl -fsS -X DELETE "$API/todos?status=done" | jq -e '.deleted >= 1'
           curl -fsS "$API/todos?status=done" | jq -e 'length == 0'
           test "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $API/todos)" = 400
+
+          echo "Update 2: prioritas, deadline, dan edit"
+          ID=$(curl -fsS -X POST $API/todos -H "$JSON" \
+               -d '{"title":"todo prioritas","priority":"high","due_date":"2030-01-15"}' | jq -r .id)
+          curl -fsS $API/todos | jq -e ".[] | select(.id == $ID and .priority == \"high\" and .due_date == \"2030-01-15\")"
+          curl -fsS -X PATCH $API/todos/$ID -H "$JSON" -d '{"title":"todo CI diedit"}' | jq -e '.title == "todo CI diedit"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $API/todos -H "$JSON" -d '{"title":"x","priority":"urgent"}')" = 400
+
           echo "Smoke test lulus"
 
       - name: Tampilkan log kalau gagal
