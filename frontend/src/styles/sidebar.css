@@ -1,0 +1,224 @@
+/* ================================================================ Update 3: sidebar halaman dan urutan */
+
+.shell {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    /* Warna kolom sidebar tetap penuh walaupun halaman lebih panjang dari layar */
+    background: linear-gradient(90deg, var(--surface) 247px, var(--line) 247px, var(--line) 248px, transparent 248px);
+}
+
+.shell > .main {
+    margin: 0;
+}
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 28px 16px 20px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.brand .logo {
+    width: 40px;
+    height: 40px;
+}
+
+.brand-name {
+    display: block;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.brand-tag {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.nav {
+    display: grid;
+    gap: 4px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: 10px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.nav-item:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+}
+
+.nav-item[aria-current="page"] {
+    color: var(--ink);
+    font-weight: 600;
+    background: var(--accent-soft);
+}
+
+.nav-item[aria-current="page"] svg {
+    color: var(--accent);
+}
+
+.nav-label {
+    flex: 1;
+}
+
+.nav-count {
+    min-width: 22px;
+    padding: 0 7px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 22px;
+    text-align: center;
+    color: var(--muted);
+    background: var(--bg);
+    border-radius: 999px;
+}
+
+.nav-count.alert {
+    color: var(--on-danger);
+    background: var(--danger);
+}
+
+.nav-item:focus-visible,
+.brand:focus-visible {
+    outline: 3px solid var(--sun);
+    outline-offset: 2px;
+}
+
+/* Pilihan urutan di toolbar */
+
+.sort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.sort select {
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.sort select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+/* Tablet dan HP: sidebar berubah menjadi bar di atas dengan navigasi mendatar. */
+@media (max-width: 760px) {
+    .shell {
+        display: block;
+        background: none;
+    }
+
+    .sidebar {
+        position: sticky;
+        z-index: 5;
+        height: auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        padding: 14px 16px 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+        padding: 0;
+    }
+
+    .brand .logo {
+        width: 34px;
+        height: 34px;
+    }
+
+    .brand-tag {
+        display: none;
+    }
+
+    .nav {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+    }
+
+    .nav-item {
+        flex-shrink: 0;
+        gap: 8px;
+        padding: 7px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Tiga menu harus muat di layar HP tanpa digeser */
+    .nav {
+        gap: 4px;
+    }
+
+    .nav-item {
+        flex: 1 0 auto;
+        justify-content: center;
+        gap: 6px;
+        padding: 7px 8px;
+        font-size: 0.92rem;
+    }
+
+    .nav-count {
+        min-width: 20px;
+        padding: 0 6px;
+        line-height: 20px;
+    }
+
+    .nav-item svg {
+        display: none;
+    }
+
+    .nav-label {
+        flex: none;
+    }
+
+    .sort {
+        justify-content: space-between;
+    }
+
+    .sort select {
+        flex: 1;
+    }
+}
