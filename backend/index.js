@@ -16,10 +16,20 @@ const db = mysql.createPool({
   connectionLimit: 10,
 });
 
+const STATUSES = ['all', 'active', 'done'];
+
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// Daftar todo. Opsional: ?status=all|active|done
 app.get('/todos', (req, res) => {
-  db.query('SELECT * FROM todos ORDER BY created_at DESC', (err, results) => {
+  const status = req.query.status || 'all';
+  if (!STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Status must be one of: ${STATUSES.join(', ')}` });
+  }
+  let where = '';
+  if (status === 'active') where = ' WHERE completed = FALSE';
+  if (status === 'done') where = ' WHERE completed = TRUE';
+  db.query(`SELECT * FROM todos${where} ORDER BY created_at DESC, id DESC`, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
@@ -39,6 +49,17 @@ app.put('/todos/:id', (req, res) => {
   db.query('UPDATE todos SET completed = NOT completed WHERE id = ?', [id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Updated' });
+  });
+});
+
+// Hapus semua todo yang sudah selesai. Wajib ?status=done supaya tidak terhapus semua tanpa sengaja.
+app.delete('/todos', (req, res) => {
+  if (req.query.status !== 'done') {
+    return res.status(400).json({ error: 'Only completed todos can be bulk deleted: use ?status=done' });
+  }
+  db.query('DELETE FROM todos WHERE completed = TRUE', (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ deleted: result.affectedRows });
   });
 });
 
