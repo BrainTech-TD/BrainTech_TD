@@ -1,0 +1,206 @@
+/* ================================================================ Update 2: prioritas, deadline, dan edit */
+
+.overdue-count {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+/* Pilihan prioritas dan tanggal di bawah kolom input */
+
+.options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+}
+
+.opt-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.date-input {
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+}
+
+.date-input:focus,
+.edit-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.prio-picker {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+}
+
+.prio-picker button {
+    padding: 4px 12px;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.prio-picker button:hover {
+    color: var(--ink);
+    background: var(--bg);
+}
+
+.prio-picker .prio-low[aria-pressed="true"] {
+    color: var(--on-accent);
+    background: var(--accent);
+}
+
+.prio-picker .prio-medium[aria-pressed="true"] {
+    color: var(--on-sun);
+    background: var(--sun);
+}
+
+.prio-picker .prio-high[aria-pressed="true"] {
+    color: var(--on-danger);
+    background: var(--danger);
+}
+
+/* Label prioritas dan deadline di setiap tugas */
+
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chip {
+    padding: 1px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.6;
+    border-radius: 999px;
+}
+
+.chip.prio-low {
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+}
+
+.chip.prio-medium {
+    color: var(--sun-ink);
+    background: var(--sun-soft);
+}
+
+.chip.prio-high {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.chip.due {
+    color: var(--muted);
+    background: var(--bg);
+}
+
+.chip.due.today {
+    color: var(--sun-ink);
+    background: var(--sun-soft);
+}
+
+.chip.due.overdue {
+    color: var(--on-danger);
+    background: var(--danger);
+}
+
+.is-done .chip {
+    opacity: 0.6;
+}
+
+/* Mode edit */
+
+.edit:hover {
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+}
+
+.item.is-editing {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.edit-form {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.edit-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.save-btn {
+    padding: 8px 18px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--btn-ink);
+    background: var(--btn-bg);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.save-btn:hover:not(:disabled) {
+    background: var(--btn-hover);
+}
+
+.save-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.save-btn:focus-visible,
+.prio-picker button:focus-visible {
+    outline: 3px solid var(--sun);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .edit-actions {
+        width: 100%;
+    }
+
+    .edit-actions button {
+        flex: 1;
+    }
+}
