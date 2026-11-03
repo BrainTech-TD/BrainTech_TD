@@ -1,0 +1,50 @@
+/* ================================================================ Update 5: pencarian */
+
+.search {
+    flex: 1;
+    min-width: 170px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+}
+
+.search:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.search input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 0;
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+.search input::placeholder {
+    color: var(--placeholder);
+}
+
+/* Kata yang cocok disorot di judul tugas */
+
+.hl {
+    padding: 0 1px;
+    color: inherit;
+    background: var(--mark);
+    border-radius: 3px;
+}
+
+@media (max-width: 480px) {
+    .search {
+        min-width: 0;
+    }
+}

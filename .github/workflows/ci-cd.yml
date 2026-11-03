@@ -103,6 +103,9 @@ jobs:
           printf 'title,priority\nTugas dari CSV,high\n' | \
             curl -fsS -X POST $API/todos/import -H 'Content-Type: text/csv' --data-binary @- | jq -e '.imported == 1'
 
+          echo "Update 5: pencarian judul"
+          curl -fsS "$API/todos?q=docker" | jq -e 'length >= 1 and all(.title | ascii_downcase | contains("docker"))'
+
           echo "Smoke test lulus"
 
       - name: Tampilkan log kalau gagal

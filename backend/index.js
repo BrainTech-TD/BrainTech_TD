@@ -155,20 +155,31 @@ function readImportBody(req) {
   throw new Error('Send a JSON array, an exported JSON file, or a CSV file');
 }
 
+function escapeLike(text) {
+  return text.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
 // ---------------------------------------------------------------- Routes
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Daftar todo. Opsional: ?status=all|active|done
+// Daftar todo. Opsional: ?status=all|active|done dan ?q=kata (cari di judul)
 app.get('/todos', (req, res) => {
   const status = req.query.status || 'all';
   if (!STATUSES.includes(status)) {
     return res.status(400).json({ error: `Status must be one of: ${STATUSES.join(', ')}` });
   }
-  let where = '';
-  if (status === 'active') where = ' WHERE completed = FALSE';
-  if (status === 'done') where = ' WHERE completed = TRUE';
-  db.query(`${SELECT_TODO}${where} ORDER BY created_at DESC, id DESC`, (err, results) => {
+  const conditions = [];
+  const values = [];
+  if (status === 'active') conditions.push('completed = FALSE');
+  if (status === 'done') conditions.push('completed = TRUE');
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (q) {
+    conditions.push("title LIKE ? ESCAPE '\\\\'");
+    values.push(`%${escapeLike(q)}%`);
+  }
+  const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
+  db.query(`${SELECT_TODO}${where} ORDER BY created_at DESC, id DESC`, values, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
@@ -397,4 +408,5 @@ module.exports = {
   toCSV,
   parseCSV,
   normalizeImportRow,
+  escapeLike,
 };

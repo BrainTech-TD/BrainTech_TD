@@ -5,6 +5,7 @@ import { dueInfo, todayISO } from "./utils";
 import { PAGES, formatLongDate, pageFromHash, sortTodos } from "./pages";
 import Sidebar from "./components/Sidebar";
 import SortSelect from "./components/SortSelect";
+import SearchBox, { matchesQuery } from "./components/SearchBox";
 import FilterTabs, { applyFilter } from "./components/FilterTabs";
 import PriorityPicker from "./components/PriorityPicker";
 import TodoItem from "./components/TodoItem";
@@ -24,6 +25,7 @@ export default function App() {
 
   const [page, setPage] = useState(() => pageFromHash(window.location.hash));
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
   const [sorts, setSorts] = useState(() => Object.fromEntries(PAGES.map((p) => [p.id, p.defaultSort])));
   const [editingId, setEditingId] = useState(null);
 
@@ -73,7 +75,7 @@ export default function App() {
     PAGES.map((p) => [p.id, todos.filter((t) => !t.completed && p.match(t, today)).length])
   );
   const sort = sorts[page];
-  const visible = sortTodos(applyFilter(pageTodos, filter), sort);
+  const visible = sortTodos(applyFilter(pageTodos, filter).filter((t) => matchesQuery(t, query)), sort);
 
   // ---------------------------------------------------------------- Aksi
   const showError = (err) => setError(err.message);
@@ -178,13 +180,20 @@ export default function App() {
         {todos.length > 0 && (
           <div className="toolbar">
             <FilterTabs value={filter} counts={tabCounts} onChange={setFilter} />
+            <SearchBox value={query} onChange={setQuery} />
             <SortSelect value={sort} onChange={(value) => setSorts({ ...sorts, [page]: value })} />
           </div>
         )}
 
         {!error && !loading && pageTodos.length === 0 && <p className="notice">{EMPTY_PAGE[page]}</p>}
         {pageTodos.length > 0 && visible.length === 0 && (
-          <p className="notice">{filter === "active" ? "No active tasks here. Nice work." : "Nothing completed yet."}</p>
+          <p className="notice">
+            {query.trim()
+              ? `No tasks match "${query.trim()}".`
+              : filter === "active"
+                ? "No active tasks here. Nice work."
+                : "Nothing completed yet."}
+          </p>
         )}
 
         <ul className="list">
@@ -192,6 +201,7 @@ export default function App() {
             <TodoItem
               key={todo.id}
               todo={todo}
+              query={query}
               editing={todo.id === editingId}
               onToggle={() => toggleTodo(todo.id)}
               onDelete={() => deleteTodo(todo.id)}

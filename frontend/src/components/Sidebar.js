@@ -1,6 +1,7 @@
 import "../styles/sidebar.css";
 import { PAGES } from "../pages";
 import { Icon, Logo } from "../icons";
+import ThemeToggle from "./ThemeToggle";
 
 const TodayIcon = () => (
   <Icon>
@@ -59,6 +60,10 @@ export default function Sidebar({ page, counts, alerts }) {
           );
         })}
       </nav>
+
+      <div className="sidebar-footer">
+        <ThemeToggle />
+      </div>
     </aside>
   );
 }
