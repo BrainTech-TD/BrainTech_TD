@@ -94,6 +94,15 @@ jobs:
           curl -fsS -X PATCH $API/todos/$ID -H "$JSON" -d '{"title":"todo CI diedit"}' | jq -e '.title == "todo CI diedit"'
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $API/todos -H "$JSON" -d '{"title":"x","priority":"urgent"}')" = 400
 
+          echo "Update 4: export CSV dan JSON, lalu import kembali"
+          curl -fsS "$API/todos/export?format=csv" | grep -q '^.*id,title,completed,priority,due_date,created_at'
+          curl -fsS "$API/todos/export" -o export.json
+          BEFORE=$(curl -fsS $API/todos | jq length)
+          curl -fsS -X POST $API/todos/import -H "$JSON" --data-binary @export.json | jq -e ".imported == $BEFORE"
+          curl -fsS $API/todos | jq -e "length == $((BEFORE * 2))"
+          printf 'title,priority\nTugas dari CSV,high\n' | \
+            curl -fsS -X POST $API/todos/import -H 'Content-Type: text/csv' --data-binary @- | jq -e '.imported == 1'
+
           echo "Smoke test lulus"
 
       - name: Tampilkan log kalau gagal

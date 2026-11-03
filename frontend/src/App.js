@@ -8,6 +8,7 @@ import SortSelect from "./components/SortSelect";
 import FilterTabs, { applyFilter } from "./components/FilterTabs";
 import PriorityPicker from "./components/PriorityPicker";
 import TodoItem from "./components/TodoItem";
+import DataMenu from "./components/DataMenu";
 
 const EMPTY_PAGE = {
   today: "Nothing due today. Enjoy the calm.",
@@ -116,6 +117,11 @@ export default function App() {
     api("/todos?status=done", { method: "DELETE" }).then(fetchTodos).catch(showError);
   };
 
+  const onImported = (count, fileName) => {
+    setToast(`Imported ${count} ${count === 1 ? "task" : "tasks"} from ${fileName}`);
+    fetchTodos();
+  };
+
   // ---------------------------------------------------------------- Tampilan
   return (
     <div className="shell">
@@ -127,6 +133,7 @@ export default function App() {
             <h1>{pageDef.label}</h1>
             <p className="tagline">{pageDef.description || formatLongDate()}</p>
           </div>
+          <DataMenu onImported={onImported} onError={showError} />
         </header>
 
         <section className="progress" aria-label="Progress">

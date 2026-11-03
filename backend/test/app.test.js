@@ -4,7 +4,16 @@
 const { test, after } = require('node:test');
 const assert = require('node:assert');
 const request = require('supertest');
-const { app, db, validateTitle, validatePriority, validateDueDate } = require('../index');
+const {
+  app,
+  db,
+  validateTitle,
+  validatePriority,
+  validateDueDate,
+  toCSV,
+  parseCSV,
+  normalizeImportRow,
+} = require('../index');
 
 after(() => db.end());
 
@@ -99,4 +108,84 @@ test('validateTitle membuang spasi di awal dan akhir, dan membatasi panjang', ()
   assert.strictEqual(validateTitle('  Belajar Docker  ').value, 'Belajar Docker');
   assert.ok(validateTitle('a'.repeat(256)).error);
   assert.ok(validateTitle(123).error);
+});
+
+// ---------------------------------------------------------------- Update 4: export dan import
+
+test('GET /todos/export dengan format tidak dikenal ditolak', async () => {
+  const res = await request(app).get('/todos/export?format=xml');
+  assert.strictEqual(res.status, 400);
+});
+
+test('POST /todos/import dengan body kosong ditolak', async () => {
+  const res = await request(app).post('/todos/import').send({});
+  assert.strictEqual(res.status, 400);
+});
+
+test('POST /todos/import menyebut nomor baris yang salah', async () => {
+  const res = await request(app)
+    .post('/todos/import')
+    .send([{ title: 'Benar' }, { title: '' }]);
+  assert.strictEqual(res.status, 400);
+  assert.strictEqual(res.body.error, 'Row 2: Title is required');
+});
+
+test('POST /todos/import CSV tanpa kolom title ditolak', async () => {
+  const res = await request(app)
+    .post('/todos/import')
+    .set('Content-Type', 'text/csv')
+    .send('nama,prioritas\nBelajar,high\n');
+  assert.strictEqual(res.status, 400);
+  assert.match(res.body.error, /title/);
+});
+
+test('toCSV memberi kutip pada koma, kutip, dan baris baru', () => {
+  const csv = toCSV([
+    { id: 1, title: 'Beli kopi, gula', completed: 1, priority: 'low', due_date: null, created_at: null },
+    { id: 2, title: 'Kata "penting"\nbaris dua', completed: 0, priority: 'high', due_date: '2026-11-02', created_at: null },
+  ]);
+  const lines = csv.split('\r\n');
+  assert.strictEqual(lines[0], 'id,title,completed,priority,due_date,created_at');
+  assert.strictEqual(lines[1], '1,"Beli kopi, gula",true,low,,');
+  assert.ok(csv.includes('"Kata ""penting""\nbaris dua"'));
+});
+
+test('toCSV mencegah CSV injection dengan awalan kutip satu', () => {
+  const csv = toCSV([{ id: 1, title: '=SUM(A1:A2)', completed: 0, priority: 'low', due_date: null, created_at: null }]);
+  assert.ok(csv.includes(",'=SUM(A1:A2),"));
+});
+
+test('parseCSV membaca hasil toCSV kembali dengan utuh', () => {
+  const original = [
+    { id: 1, title: 'Beli kopi, gula', completed: 1, priority: 'low', due_date: null, created_at: null },
+    { id: 2, title: 'Kata "penting"\nbaris dua', completed: 0, priority: 'high', due_date: '2026-11-02', created_at: null },
+    { id: 3, title: '-catatan minus', completed: 0, priority: 'medium', due_date: null, created_at: null },
+  ];
+  const records = parseCSV('﻿' + toCSV(original));
+  assert.strictEqual(records.length, 3);
+  const rows = records.map((r) => normalizeImportRow(r).value);
+  assert.deepStrictEqual(rows[0], ['Beli kopi, gula', true, 'low', null]);
+  assert.deepStrictEqual(rows[1], ['Kata "penting"\nbaris dua', false, 'high', '2026-11-02']);
+  assert.deepStrictEqual(rows[2], ['-catatan minus', false, 'medium', null]);
+});
+
+test('parseCSV menerima kolom tanpa urutan tetap dan huruf besar', () => {
+  const records = parseCSV('Priority,TITLE\r\nHIGH,Belajar\r\n\r\n,Tanpa prioritas\r\n');
+  assert.deepStrictEqual(records.map((r) => normalizeImportRow(r).value), [
+    ['Belajar', false, 'high', null],
+    ['Tanpa prioritas', false, 'medium', null],
+  ]);
+});
+
+test('normalizeImportRow menolak nilai completed yang aneh', () => {
+  assert.match(normalizeImportRow({ title: 'x', completed: 'mungkin' }).error, /completed/);
+});
+
+test('POST /todos/import dengan JSON rusak dijawab 400 berformat JSON', async () => {
+  const res = await request(app)
+    .post('/todos/import')
+    .set('Content-Type', 'application/json')
+    .send('{"todos": [ rusak');
+  assert.strictEqual(res.status, 400);
+  assert.strictEqual(res.body.error, 'The request body is not valid JSON');
 });
