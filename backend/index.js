@@ -4,7 +4,9 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Batas 1 MB supaya import file JSON/CSV berisi ratusan todo tetap muat.
+app.use(express.json({ limit: '1mb' }));
+app.use(express.text({ type: ['text/csv', 'text/plain'], limit: '1mb' }));
 
 // Semua konfigurasi diambil dari environment variable (diisi lewat .env / docker compose).
 const db = mysql.createPool({
@@ -58,6 +60,101 @@ function isValidId(id) {
 
 const SELECT_TODO = 'SELECT id, title, completed, priority, due_date, created_at FROM todos';
 
+// ---------------------------------------------------------------- CSV dan import
+
+const MAX_IMPORT = 500;
+const CSV_COLUMNS = ['id', 'title', 'completed', 'priority', 'due_date', 'created_at'];
+
+// Nilai yang diawali = + - @ bisa dijalankan sebagai rumus oleh Excel (CSV injection),
+// jadi diberi awalan ' saat export dan awalan itu dibuang lagi saat import.
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+function csvField(value) {
+  if (value === null || value === undefined) return '';
+  let text = value instanceof Date ? value.toISOString() : String(value);
+  if (FORMULA_START.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function toCSV(rows) {
+  const lines = [CSV_COLUMNS.join(',')];
+  for (const row of rows) {
+    lines.push(CSV_COLUMNS.map((c) => csvField(c === 'completed' ? Boolean(row[c]) : row[c])).join(','));
+  }
+  return lines.join('\r\n') + '\r\n';
+}
+
+// Parser CSV sederhana: mendukung tanda kutip, koma dan baris baru di dalam kutip, CRLF, dan BOM.
+function parseCSV(text) {
+  const src = text.replace(/^﻿/, '');
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (inQuotes) {
+      if (ch === '"' && src[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else field += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && src[i + 1] === '\n') i++;
+      row.push(field); rows.push(row); row = []; field = '';
+    } else field += ch;
+  }
+  if (inQuotes) throw new Error('CSV has an unclosed quote');
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+
+  const nonEmpty = rows.filter((r) => r.some((cell) => cell.trim() !== ''));
+  if (nonEmpty.length === 0) return [];
+  const header = nonEmpty[0].map((h) => h.trim().toLowerCase());
+  if (!header.includes('title')) throw new Error('CSV must have a "title" column in the first row');
+  return nonEmpty.slice(1).map((cells) => {
+    const record = {};
+    header.forEach((name, idx) => { record[name] = cells[idx] === undefined ? '' : cells[idx]; });
+    return record;
+  });
+}
+
+function parseCompleted(value) {
+  if (value === undefined || value === null || value === '') return { value: false };
+  if (typeof value === 'boolean') return { value };
+  const text = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y', 'done'].includes(text)) return { value: true };
+  if (['false', '0', 'no', 'n', 'active'].includes(text)) return { value: false };
+  return { error: 'completed must be true or false' };
+}
+
+function unescapeFormula(value) {
+  return typeof value === 'string' && /^'[=+\-@\t\r]/.test(value) ? value.slice(1) : value;
+}
+
+// Ubah satu baris data import menjadi [title, completed, priority, due_date], atau pesan error.
+function normalizeImportRow(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Each item must be an object' };
+  const title = validateTitle(unescapeFormula(raw.title));
+  if (title.error) return { error: title.error };
+  const completed = parseCompleted(raw.completed);
+  if (completed.error) return { error: completed.error };
+  const rawPriority = typeof raw.priority === 'string' ? raw.priority.trim().toLowerCase() : raw.priority;
+  const priority = validatePriority(rawPriority === undefined || rawPriority === '' ? 'medium' : rawPriority);
+  if (priority.error) return { error: priority.error };
+  const rawDue = typeof raw.due_date === 'string' ? raw.due_date.trim() : raw.due_date;
+  const dueDate = validateDueDate(rawDue);
+  if (dueDate.error) return { error: dueDate.error };
+  return { value: [title.value, completed.value, priority.value, dueDate.value] };
+}
+
+// Ambil daftar item dari body request (JSON array, JSON hasil export, atau teks CSV).
+function readImportBody(req) {
+  if (typeof req.body === 'string') return parseCSV(req.body);
+  if (Array.isArray(req.body)) return req.body;
+  if (req.body && Array.isArray(req.body.todos)) return req.body.todos;
+  throw new Error('Send a JSON array, an exported JSON file, or a CSV file');
+}
+
 // ---------------------------------------------------------------- Routes
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -74,6 +171,50 @@ app.get('/todos', (req, res) => {
   db.query(`${SELECT_TODO}${where} ORDER BY created_at DESC, id DESC`, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
+  });
+});
+
+// Export semua todo: ?format=json (default) atau ?format=csv
+app.get('/todos/export', (req, res) => {
+  const format = req.query.format || 'json';
+  if (!['json', 'csv'].includes(format)) {
+    return res.status(400).json({ error: 'Format must be json or csv' });
+  }
+  db.query(`${SELECT_TODO} ORDER BY created_at DESC, id DESC`, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Disposition', `attachment; filename="todos-${stamp}.${format}"`);
+    if (format === 'csv') {
+      res.type('text/csv; charset=utf-8').send('﻿' + toCSV(rows));
+    } else {
+      const todos = rows.map((r) => ({ ...r, completed: Boolean(r.completed) }));
+      res.json({ exported_at: new Date().toISOString(), count: todos.length, todos });
+    }
+  });
+});
+
+// Import todo dari file export (JSON) atau CSV. Data ditambahkan, tidak menimpa yang lama.
+// Semua baris divalidasi dulu; kalau ada satu yang salah, tidak ada yang disimpan.
+app.post('/todos/import', (req, res) => {
+  let items;
+  try {
+    items = readImportBody(req);
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
+  }
+  if (items.length === 0) return res.status(400).json({ error: 'The file has no todos to import' });
+  if (items.length > MAX_IMPORT) {
+    return res.status(400).json({ error: `Import at most ${MAX_IMPORT} todos at a time` });
+  }
+  const rows = [];
+  for (let i = 0; i < items.length; i++) {
+    const result = normalizeImportRow(items[i]);
+    if (result.error) return res.status(400).json({ error: `Row ${i + 1}: ${result.error}` });
+    rows.push(result.value);
+  }
+  db.query('INSERT INTO todos (title, completed, priority, due_date) VALUES ?', [rows], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ imported: result.affectedRows });
   });
 });
 
@@ -176,6 +317,15 @@ app.delete('/todos/:id', (req, res) => {
   });
 });
 
+// Body request yang rusak (JSON tidak valid) atau terlalu besar dijawab dengan JSON, bukan halaman HTML.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'The request body is not valid JSON' });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'The file is too large (max 1 MB)' });
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 // ---------------------------------------------------------------- Migrasi database
 //
 // init.sql hanya dijalankan MySQL saat volume data masih kosong. Database yang
@@ -244,4 +394,7 @@ module.exports = {
   validateTitle,
   validatePriority,
   validateDueDate,
+  toCSV,
+  parseCSV,
+  normalizeImportRow,
 };
