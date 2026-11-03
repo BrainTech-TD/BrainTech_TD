@@ -1,0 +1,122 @@
+/* ================================================================ Update 6: mode gelap
+   Mode gelap hanya menukar nilai token warna dari App.css, jadi komponen
+   tidak perlu tahu tema yang sedang aktif.
+   - Tanpa pilihan tersimpan: mengikuti pengaturan sistem (prefers-color-scheme).
+   - Dengan pilihan tersimpan: atribut data-theme di <html> yang menentukan. */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #0d1422;
+        --surface: #162033;
+        --surface-2: #121b2c;
+        --ink: #e5ecf4;
+        --muted: #97a7bb;
+        --placeholder: #6d7d92;
+        --done-ink: #6d7d92;
+        --line: #26344b;
+        --line-strong: #3a4b68;
+        --check-border: #52637f;
+        --tabs-bg: #0f1828;
+        --accent: #2bb5b7;
+        --accent-dark: #74d7d8;
+        --accent-soft: rgba(43, 181, 183, 0.16);
+        --on-accent: #062221;
+        --sun: #f2c94c;
+        --sun-soft: rgba(242, 201, 76, 0.16);
+        --sun-ink: #f5d77a;
+        --on-sun: #14213d;
+        --danger: #f07163;
+        --danger-soft: rgba(240, 113, 99, 0.16);
+        --on-danger: #2b0d09;
+        --btn-bg: #2bb5b7;
+        --btn-ink: #062221;
+        --btn-hover: #4cc7c8;
+        --focus-ring: rgba(43, 181, 183, 0.28);
+        --shadow: rgba(0, 0, 0, 0.35);
+        --logo-bg: #2c3f69;
+        --mark: rgba(242, 201, 76, 0.38);
+    }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1422;
+    --surface: #162033;
+    --surface-2: #121b2c;
+    --ink: #e5ecf4;
+    --muted: #97a7bb;
+    --placeholder: #6d7d92;
+    --done-ink: #6d7d92;
+    --line: #26344b;
+    --line-strong: #3a4b68;
+    --check-border: #52637f;
+    --tabs-bg: #0f1828;
+    --accent: #2bb5b7;
+    --accent-dark: #74d7d8;
+    --accent-soft: rgba(43, 181, 183, 0.16);
+    --on-accent: #062221;
+    --sun: #f2c94c;
+    --sun-soft: rgba(242, 201, 76, 0.16);
+    --sun-ink: #f5d77a;
+    --on-sun: #14213d;
+    --danger: #f07163;
+    --danger-soft: rgba(240, 113, 99, 0.16);
+    --on-danger: #2b0d09;
+    --btn-bg: #2bb5b7;
+    --btn-ink: #062221;
+    --btn-hover: #4cc7c8;
+    --focus-ring: rgba(43, 181, 183, 0.28);
+    --shadow: rgba(0, 0, 0, 0.35);
+    --logo-bg: #2c3f69;
+    --mark: rgba(242, 201, 76, 0.38);
+}
+
+/* Tombol di bagian bawah sidebar */
+
+.sidebar-footer {
+    margin-top: auto;
+}
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    font: inherit;
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.theme-toggle:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+}
+
+.theme-toggle:focus-visible {
+    outline: 3px solid var(--sun);
+    outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+    .sidebar-footer {
+        grid-column: 2;
+        grid-row: 1;
+        margin: 0;
+        align-self: center;
+    }
+
+    .theme-toggle {
+        padding: 7px;
+    }
+
+    .theme-label {
+        display: none;
+    }
+}

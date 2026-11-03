@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PriorityPicker from "./PriorityPicker";
+import { Highlight } from "./SearchBox";
 import { PRIORITY_LABEL, dueInfo } from "../utils";
 import { Icon, CheckIcon, TrashIcon } from "../icons";
 
@@ -55,7 +56,7 @@ function EditForm({ todo, onSave, onCancel }) {
 }
 
 // Satu baris tugas: centang, judul, label prioritas dan deadline, tombol edit dan hapus.
-export default function TodoItem({ todo, editing, onToggle, onDelete, onEdit, onCancelEdit, onSave }) {
+export default function TodoItem({ todo, query, editing, onToggle, onDelete, onEdit, onCancelEdit, onSave }) {
   if (editing) return <EditForm todo={todo} onSave={onSave} onCancel={onCancelEdit} />;
 
   const due = dueInfo(todo);
@@ -71,7 +72,9 @@ export default function TodoItem({ todo, editing, onToggle, onDelete, onEdit, on
         <CheckIcon />
       </button>
       <div className="body">
-        <span className="title" onClick={onToggle}>{todo.title}</span>
+        <span className="title" onClick={onToggle}>
+          <Highlight text={todo.title} query={query} />
+        </span>
         <div className="meta">
           <span className={`chip prio-${todo.priority || "medium"}`}>{PRIORITY_LABEL[todo.priority] || "Medium"}</span>
           {due && <span className={`chip due ${due.className}`}>{due.text}</span>}

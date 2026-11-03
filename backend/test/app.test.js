@@ -13,6 +13,7 @@ const {
   toCSV,
   parseCSV,
   normalizeImportRow,
+  escapeLike,
 } = require('../index');
 
 after(() => db.end());
@@ -188,4 +189,18 @@ test('POST /todos/import dengan JSON rusak dijawab 400 berformat JSON', async ()
     .send('{"todos": [ rusak');
   assert.strictEqual(res.status, 400);
   assert.strictEqual(res.body.error, 'The request body is not valid JSON');
+});
+
+// ---------------------------------------------------------------- Update 5: pencarian
+
+test('GET /todos?q= tetap memvalidasi status', async () => {
+  const res = await request(app).get('/todos?q=docker&status=semua');
+  assert.strictEqual(res.status, 400);
+});
+
+test('escapeLike membuat % dan _ dicari sebagai huruf biasa', () => {
+  assert.strictEqual(escapeLike('100%'), '100\\%');
+  assert.strictEqual(escapeLike('nama_file'), 'nama\\_file');
+  assert.strictEqual(escapeLike('a\\b'), 'a\\\\b');
+  assert.strictEqual(escapeLike('docker'), 'docker');
 });
