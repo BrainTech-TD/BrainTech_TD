@@ -126,4 +126,8 @@ Secrets yang dibutuhkan: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, dan untuk depl
 
 ## Deploy ke VPS
 
-Gunakan `deploy/docker-compose.prod.yml` dan buat `.env` dari `deploy/.env.example` di folder `~/todo-app` pada VPS. Langkah lengkap ada di [PANDUAN-DEVOPS.md](PANDUAN-DEVOPS.md).
+Aplikasi sudah di-deploy ke VPS dan bisa dibuka di sini:
+
+*http://103.119.237.106:30044/*
+
+Setiap push ke branch main yang lolos pipeline akan otomatis memperbarui aplikasi di VPS.
